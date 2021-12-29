@@ -1,0 +1,7 @@
+[workspace]
+members = [
+    "client",
+    "server",
+    "example",
+	"example-dll",
+]
