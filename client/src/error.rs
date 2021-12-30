@@ -4,13 +4,19 @@ use thiserror::Error;
 pub enum ClientError {
     #[error("allocation failed: {0}")]
     Alloc(u32),
+
+    #[error("failed to map image: {0}")]
+    MapImage(ManualMapError),
+
+    #[error("failed to copy image into the target process: {0}")]
+    CopyImage(u32),
 }
 
 #[derive(Error, Debug)]
 pub enum ManualMapError {
-    #[error("Failed to rebase image ({0})")]
+    #[error("failed to rebase image ({0})")]
     Rebase(pelite::Error),
 
-    #[error("Failed to resolve imports ({0})")]
+    #[error("failed to resolve imports ({0})")]
     Imports(pelite::Error),
 }

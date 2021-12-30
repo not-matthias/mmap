@@ -1,5 +1,5 @@
 use crate::error::ManualMapError;
-use pelite::image::{IMAGE_REL_BASED_ABSOLUTE, IMAGE_REL_BASED_DIR64, IMAGE_REL_BASED_HIGHLOW};
+use pelite::image::{IMAGE_REL_BASED_DIR64, IMAGE_REL_BASED_HIGHLOW};
 use pelite::pe64::imports::Desc;
 use pelite::pe64::imports::Import;
 use pelite::pe64::PeFile;
@@ -8,18 +8,7 @@ use pelite::pe64::{Pe, Va};
 use pelite::util::CStr;
 use pelite::Align;
 use std::{iter, ptr, slice};
-use winapi::um::libloaderapi::{GetProcAddress, LoadLibraryA};
 
-pub fn get_import(module: &CStr, symbol: &CStr) -> Option<usize> {
-    unsafe {
-        let handle = LoadLibraryA(module.as_ptr() as _);
-        // let handle = GetModuleHandleW(module.as_ptr() as _);
-        match GetProcAddress(handle, symbol.as_ptr() as _) as usize {
-            0 => None,
-            n => Some(n),
-        }
-    }
-}
 
 pub struct ManualMapper {
     pe: PeFile<'static>,
@@ -27,6 +16,8 @@ pub struct ManualMapper {
 
 impl ManualMapper {
     pub fn new(bytes: &'static [u8]) -> Self {
+        // TODO: Replace static lifetime
+
         // No payload id, because you can just swap out the buffer
         // or create a new instance of this.
 

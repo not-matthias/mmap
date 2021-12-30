@@ -7,9 +7,4 @@ edition = "2021"
 crate-type = ["cdylib"]
 
 [dependencies]
-client = { path = "../client" }
-
-log = "0.4.14"
-simple_logger = "1.16.0"
-
 winapi = { version = "0.3.9", features = ["winnt", "libloaderapi", "winuser"] }

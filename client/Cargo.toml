@@ -8,7 +8,7 @@ log = "0.4.14"
 thiserror = "1.0.30"
 pelite = "0.9.0"
 
-winapi = { version = "0.3.9", features = ["winnt", "libloaderapi", "winuser", "errhandlingapi"] }
+winapi = { version = "0.3.9", features = ["winnt", "libloaderapi", "winuser", "errhandlingapi", "processthreadsapi"] }
 
 [dev-dependencies]
 simple_logger = "1.16.0"
