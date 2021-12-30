@@ -9,7 +9,10 @@ pub enum ClientError {
     MapImage(ManualMapError),
 
     #[error("failed to copy image into the target process: {0}")]
-    CopyImage(u32),
+    CopyMemory(u32),
+
+    #[error("failed to create remote thread: {0}")]
+    CreateRemoteThread(u32),
 }
 
 #[derive(Error, Debug)]

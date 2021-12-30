@@ -9,18 +9,12 @@ use pelite::util::CStr;
 use pelite::Align;
 use std::{iter, ptr, slice};
 
-
-pub struct ManualMapper {
-    pe: PeFile<'static>,
+pub struct ManualMapper<'a> {
+    pe: PeFile<'a>,
 }
 
-impl ManualMapper {
-    pub fn new(bytes: &'static [u8]) -> Self {
-        // TODO: Replace static lifetime
-
-        // No payload id, because you can just swap out the buffer
-        // or create a new instance of this.
-
+impl<'a> ManualMapper<'a> {
+    pub fn new(bytes: &'a [u8]) -> Self {
         log::info!("Loading image with {} bytes", bytes.len());
 
         Self {
@@ -56,11 +50,6 @@ impl ManualMapper {
         let mut image = vec![0; self.image_size()];
 
         let src = self.pe.image().as_ptr();
-
-        // Write PE header
-        //
-        // let size_of_headers = self.pe.optional_header().SizeOfHeaders as usize;
-        // ptr::copy_nonoverlapping(src, image.as_mut_ptr(), size_of_headers);
 
         for section in self.pe.section_headers() {
             // Skip useless sections
@@ -117,14 +106,6 @@ impl ManualMapper {
         for block in relocs.iter_blocks() {
             for word in block.words() {
                 let rva = block.rva_of(word);
-
-                if image.len() < rva as usize {
-                    log::warn!("Relocation out of bounds");
-                    continue;
-                    // return Err(ManualMapError::Rebase(
-                    //     "Relocation out of bounds".to_string(),
-                    // ));
-                }
 
                 // These only apply for x64
                 //
@@ -194,27 +175,17 @@ impl ManualMapper {
         // Resolve the imported functions one by one
         //
         for (import, dest) in iter::zip(int, iat) {
-            // Read the imported function description
-            // This shouldn't ever fail really, unless your PE is really corrupt...
-            //
-            let Ok(import) = import else { continue; };
+            if let Ok(Import::ByName { name, .. }) = import {
+                let Some(import) = resolve_import(dll_name, name) else {
+                    log::error!("Couldn't find import for: {:?} - {:?}", dll_name, name);
+                    continue;
+                };
 
-            match import {
-                Import::ByName { name, .. } => {
-                    let Some(import) = resolve_import(dll_name, name) else {
-                        log::error!("Couldn't find import for: {:?} - {:?}", dll_name, name);
-                        continue;
-                    };
+                log::info!("Resolved import {}", name);
 
-                    log::info!("Resolved import {}", name);
-
-                    // And write the exported VA to the IAT
-                    //
-                    *dest = import as Va;
-                }
-                Import::ByOrdinal { .. } => {
-                    todo!("Currently not supported")
-                }
+                // And write the exported VA to the IAT
+                //
+                *dest = import as Va;
             }
         }
 
