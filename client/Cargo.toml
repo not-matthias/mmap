@@ -3,6 +3,13 @@ name = "client"
 version = "0.1.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
+server = { path = "../server" }
+
+log = "0.4.14"
+thiserror = "1.0.30"
+
+winapi = { version = "0.3.9", features = ["winnt", "libloaderapi", "winuser", "errhandlingapi"] }
+
+[dev-dependencies]
+simple_logger = "1.16.0"

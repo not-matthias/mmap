@@ -1,5 +1,5 @@
 use winapi::shared::minwindef::{BOOL, DWORD, HINSTANCE, LPVOID, TRUE};
-use winapi::um::winnt::{DLL_PROCESS_ATTACH};
+use winapi::um::winnt::DLL_PROCESS_ATTACH;
 use winapi::um::winuser::MessageBoxA;
 
 #[no_mangle]

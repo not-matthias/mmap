@@ -1,14 +1,17 @@
 use log::LevelFilter;
 use simple_logger::SimpleLogger;
 
-
 fn main() {
-    SimpleLogger::new().with_level(LevelFilter::Info).init().unwrap();
+    SimpleLogger::new()
+        .with_level(LevelFilter::Info)
+        .init()
+        .unwrap();
 
-    // This should actually be loaded on the server
+    // Test with load library in current process
     //
-    let dll = include_bytes!("../../target/release/example.dll");
+    // client::load_library();
 
-    // Load the client and map it into the **current** process
+    // Manual map
     //
+    client::manual_map();
 }

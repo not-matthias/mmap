@@ -7,6 +7,8 @@ edition = "2021"
 crate-type = ["cdylib"]
 
 [dependencies]
+client = { path = "../client" }
+
 log = "0.4.14"
 simple_logger = "1.16.0"
 
