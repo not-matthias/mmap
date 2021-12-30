@@ -229,7 +229,7 @@ impl Process {
             .mmap_image(memory as *mut _ as usize, |module, import| {
                 resolve_import(module, import)
             })
-            .map_err(|e| ClientError::MapImage(e))?;
+            .map_err(ClientError::MapImage)?;
 
         unsafe { self.copy_memory(memory, image) }?;
 

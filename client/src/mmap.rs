@@ -69,7 +69,7 @@ impl<'a> ManualMapper<'a> {
             // Write section data
             //
             ptr::copy_nonoverlapping(
-                src.offset(pointer as isize),
+                src.add(pointer),
                 image.as_mut_ptr().offset(section.VirtualAddress as isize),
                 section.SizeOfRawData as usize,
             );
@@ -97,10 +97,7 @@ impl<'a> ManualMapper<'a> {
 
         // Correct all base relocations by this delta
         //
-        let relocs = self
-            .pe
-            .base_relocs()
-            .map_err(|err| ManualMapError::Rebase(err))?;
+        let relocs = self.pe.base_relocs().map_err(ManualMapError::Rebase)?;
 
         let image_ptr = image.as_mut_ptr() as *mut u8;
         for block in relocs.iter_blocks() {
@@ -138,11 +135,7 @@ impl<'a> ManualMapper<'a> {
     where
         F: Fn(&CStr, &CStr) -> Option<usize>,
     {
-        for import_descriptor in self
-            .pe
-            .imports()
-            .map_err(|err| ManualMapError::Imports(err))?
-        {
+        for import_descriptor in self.pe.imports().map_err(ManualMapError::Imports)? {
             self.resolve_import(image, import_descriptor, &resolve_import)?;
         }
 
@@ -164,7 +157,7 @@ impl<'a> ManualMapper<'a> {
         //
         let int = desc
             .int()
-            .map_err(|err| ManualMapError::Imports(err))?
+            .map_err(ManualMapError::Imports)?
             .collect::<Vec<_>>();
 
         // Grab the IAT to write the pointers to
