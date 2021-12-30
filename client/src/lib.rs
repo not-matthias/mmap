@@ -2,9 +2,12 @@
 
 use crate::error::ClientError;
 use crate::mmap::ManualMapper;
+use ntapi::ntexapi::{
+    NtQuerySystemInformation, SystemProcessInformation, SYSTEM_PROCESS_INFORMATION,
+};
 use pelite::util::CStr;
 use std::ptr;
-use winapi::shared::minwindef::FALSE;
+use winapi::shared::minwindef::{FALSE, ULONG};
 use winapi::shared::ntdef::NULL;
 use winapi::um::errhandlingapi::GetLastError;
 use winapi::um::handleapi::{CloseHandle, INVALID_HANDLE_VALUE};
@@ -15,7 +18,8 @@ use winapi::um::processthreadsapi::{CreateRemoteThread, GetCurrentProcess, OpenP
 use winapi::um::synchapi::WaitForSingleObject;
 use winapi::um::winbase::INFINITE;
 use winapi::um::winnt::{
-    DLL_PROCESS_ATTACH, HANDLE, MEM_COMMIT, MEM_RESERVE, PAGE_EXECUTE_READWRITE, PROCESS_ALL_ACCESS,
+    DLL_PROCESS_ATTACH, HANDLE, MEM_COMMIT, MEM_RESERVE, PAGE_EXECUTE_READWRITE,
+    PROCESS_ALL_ACCESS, PVOID,
 };
 
 pub mod error;
@@ -34,6 +38,105 @@ impl Process {
         let handle = unsafe { GetCurrentProcess() };
 
         Some(Self { handle })
+    }
+
+    /// Returns the name of the specified process structure.
+    /// There's some exceptions:
+    /// - 0: Idle
+    /// - 4: System
+    fn get_process_name(process: &SYSTEM_PROCESS_INFORMATION, process_id: usize) -> String {
+        let name = &process.ImageName;
+        if name.Buffer.is_null() {
+            match process_id {
+                0 => "Idle".to_owned(),
+                4 => "System".to_owned(),
+                _ => format!("<no name> Process {}", process_id),
+            }
+        } else {
+            let slice = unsafe {
+                std::slice::from_raw_parts(
+                    name.Buffer,
+                    // The length is in bytes, not the length of string
+                    name.Length as usize / std::mem::size_of::<u16>(),
+                )
+            };
+
+            String::from_utf16_lossy(slice)
+        }
+    }
+
+    /// Returns a list of the currently running processes.
+    fn get_process_list() -> Option<Vec<(i32, String)>> {
+        // https://github.com/GuillaumeGomez/sysinfo/blob/master/src/windows/system.rs#L274
+
+        let buffer_size: usize = 512 * 1024;
+        let mut process_information: Vec<u8> = Vec::with_capacity(buffer_size);
+
+        //
+        // Get the process information
+        //
+        let mut cb_needed = 0;
+        let nt_status = unsafe {
+            process_information.set_len(buffer_size);
+
+            NtQuerySystemInformation(
+                SystemProcessInformation,
+                process_information.as_mut_ptr() as PVOID,
+                buffer_size as ULONG,
+                &mut cb_needed,
+            )
+        };
+        if nt_status < 0 || cb_needed == 0 {
+            return None;
+        }
+
+        // Parse the data block to get process information
+        let mut process_list: Vec<(i32, String)> = Vec::with_capacity(500);
+        let mut process_information_offset = 0;
+
+        loop {
+            // Convert to struct
+            //
+
+            #[allow(clippy::cast_ptr_alignment)]
+            let p = unsafe {
+                process_information
+                    .as_ptr()
+                    .offset(process_information_offset)
+                    as *const SYSTEM_PROCESS_INFORMATION
+            };
+            let pi = unsafe { &*p };
+
+            // Add to list
+            //
+            let pid = pi.UniqueProcessId as i32;
+            let name = Self::get_process_name(pi, pi.UniqueProcessId as usize);
+
+            process_list.push((pid, name));
+
+            if pi.NextEntryOffset == 0 {
+                break;
+            }
+
+            process_information_offset += pi.NextEntryOffset as isize;
+        }
+
+        Some(process_list)
+    }
+
+    /// Returns the process id of the specified process name.
+    pub fn by_name(name: &str) -> Option<Self> {
+        let process_list = Self::get_process_list()?;
+
+        for (pid, process_name) in process_list {
+            log::info!("Found process {:?}", process_name);
+
+            if process_name == name {
+                return Self::open(pid as u32);
+            }
+        }
+
+        None
     }
 
     /// Opens the specified process.
