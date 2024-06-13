@@ -7,6 +7,7 @@ use pelite::util::CStr;
 use std::ptr;
 use winapi::shared::minwindef::{FALSE, ULONG};
 use winapi::shared::ntdef::NULL;
+use winapi::shared::ntstatus::{STATUS_INFO_LENGTH_MISMATCH, STATUS_SUCCESS};
 use winapi::um::errhandlingapi::GetLastError;
 use winapi::um::handleapi::{CloseHandle, INVALID_HANDLE_VALUE};
 use winapi::um::libloaderapi::{GetProcAddress, LoadLibraryA};
@@ -67,25 +68,36 @@ impl Process {
     fn get_process_list() -> Option<Vec<(i32, String)>> {
         // https://github.com/GuillaumeGomez/sysinfo/blob/master/src/windows/system.rs#L274
 
-        let buffer_size: usize = 512 * 1024;
-        let mut process_information: Vec<u8> = Vec::with_capacity(buffer_size);
+        let mut process_information: Vec<u8> = Vec::with_capacity(512 * 1024);
 
         //
         // Get the process information
         //
-        let mut cb_needed = 0;
-        let nt_status = unsafe {
-            process_information.set_len(buffer_size);
-
-            NtQuerySystemInformation(
-                SystemProcessInformation,
-                process_information.as_mut_ptr() as PVOID,
-                buffer_size as ULONG,
-                &mut cb_needed,
-            )
-        };
-        if nt_status < 0 || cb_needed == 0 {
-            return None;
+        loop {
+            let mut cb_needed = 0;
+            let nt_status = unsafe {
+                NtQuerySystemInformation(
+                    SystemProcessInformation,
+                    process_information.as_mut_ptr() as PVOID,
+                    process_information.capacity() as ULONG,
+                    &mut cb_needed,
+                )
+            };
+            match nt_status {
+                STATUS_SUCCESS => break,
+                STATUS_INFO_LENGTH_MISMATCH => {
+                    let new_buffer_size = if cb_needed == 0 {
+                        process_information.capacity() * 2
+                    } else {
+                        // allocating a few more kilo bytes just in case there are some new process
+                        // kicked in since new call to NtQuerySystemInformation
+                        const EXTRA_BUFFER: usize = 1024 * 10;
+                        cb_needed as usize + EXTRA_BUFFER
+                    };
+                    process_information.reserve(new_buffer_size);
+                }
+                _ => return None,
+            }
         }
 
         // Parse the data block to get process information
