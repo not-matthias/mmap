@@ -6,10 +6,18 @@ edition = "2021"
 [dependencies]
 log = "0.4.14"
 thiserror = "1.0.30"
-pelite = "0.9.0"
+pelite = "0.10.0"
 
-winapi = { version = "0.3.9", features = ["winnt", "libloaderapi", "winuser", "errhandlingapi", "processthreadsapi", "synchapi"] }
-ntapi = "0.3.6"
+winapi = { version = "0.3.9", features = [
+    "winnt",
+    "libloaderapi",
+    "winuser",
+    "errhandlingapi",
+    "processthreadsapi",
+    "synchapi",
+    "winbase"
+] }
+ntapi = "0.4.1"
 
 [dev-dependencies]
-simple_logger = "1.16.0"
+simple_logger = "5.0.0"

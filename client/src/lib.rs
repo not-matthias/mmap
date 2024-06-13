@@ -1,5 +1,3 @@
-#![feature(let_else)]
-
 use crate::error::ClientError;
 use crate::mmap::ManualMapper;
 use ntapi::ntexapi::{
